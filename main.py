@@ -5,6 +5,7 @@ Created Time : 2019-08-02 01:49:24
 """
 import os
 import logging
+import sys
 
 from aiogram import Bot, Dispatcher, executor, types
 
@@ -12,7 +13,11 @@ from db import DB
 from hub_client import run_in_new_thread
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=os.getenv('API_TOKEN'))
+token = os.getenv('API_TOKEN')
+if not token:
+    print('missing API_TOKEN')
+    sys.exit(1)
+bot = Bot(token=token)
 dp = Dispatcher(bot)
 hub2_log = logging.getLogger("hub2")
 

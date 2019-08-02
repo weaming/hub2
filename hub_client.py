@@ -53,6 +53,9 @@ async def on_message(ws, message: aiohttp.WSMessage):
                 body = innter_data
                 parse_mode = "HTML"
                 disable_preview = True
+            elif innter_type == MESSAGE_TYPE.JSON.name:
+                body = innter_data
+                disable_preview = True
             else:
                 hub_log.warning(f"unprocessed type {innter_type}")
 
