@@ -36,5 +36,10 @@ class Database:
             db[chat_id]['topics'] = list(set(db[chat_id]['topics']) - set(topics))
             return db[chat_id]['topics']
 
+    def get_all_topics(self):
+        with self.db as db:
+            data = db.data
+            return {u: v['topics'] for u, v in data.items()}
+
 
 DB = Database()

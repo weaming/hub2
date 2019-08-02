@@ -9,6 +9,7 @@ import logging
 from aiogram import Bot, Dispatcher, executor, types
 
 from db import DB
+from hub_client import run_in_new_thread
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=os.getenv('API_TOKEN'))
@@ -51,4 +52,5 @@ async def echo(message: types.Message):
 
 
 if __name__ == '__main__':
+    run_in_new_thread()
     executor.start_polling(dp, skip_updates=True)

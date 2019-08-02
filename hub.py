@@ -16,6 +16,7 @@ hub_url = "wss://hub.drink.cafe/ws"
 
 class MESSAGE_TYPE(Enum):
     PLAIN = "PLAIN"
+    MARKDOWN = "MARKDOWN"
     JSON = "JSON"
     HTML = "HTML"
     IMAGE = "IMAGE"
