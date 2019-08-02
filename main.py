@@ -18,7 +18,9 @@ hub2_log = logging.getLogger("hub2")
 
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
-    await message.reply("Hi!\nI'm Hub2!\nTry /subscribe topic")
+    await message.reply(
+        "Hi!\nI'm Hub2!\nTry /subscribe topic, separated by comma ',', spaces will be trimmed."
+    )
 
 
 def parse_topics(message):
