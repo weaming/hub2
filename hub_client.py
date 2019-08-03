@@ -4,7 +4,6 @@ import aiohttp
 import logging
 import time
 import asyncio
-from functools import partial
 
 from aiohttp import ClientWebSocketResponse
 
@@ -14,6 +13,7 @@ from hub import new_sub_message, hub_log, connect_hub, MESSAGE_TYPE
 
 async def sub_topics(ws: ClientWebSocketResponse, topics):
     await ws.send_json(new_sub_message(topics))
+    hub_log.info(f"subscribed {topics}")
 
 
 async def on_message(ws, message: aiohttp.WSMessage):
@@ -36,6 +36,10 @@ async def on_message(ws, message: aiohttp.WSMessage):
     if type == 'MESSAGE':
         topic = msg['topic']
         if topic:
+            # ignore topic global
+            if topic == 'global':
+                return
+
             # render message
             innter_type = msg['message']['type']
             innter_data = msg['message']['data']
@@ -61,7 +65,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
 
             if body:
                 body = f"# {topic}\n\n{body}"
-                all_topics = DB.get_all_topics()
+                all_topics = DB.get_user_topics_map()
                 for chat_id, topics in all_topics.items():
                     if topic in topics:
                         try:
@@ -81,27 +85,42 @@ def run_async_func_in_loop(future, loop):
     return result
 
 
-async def before_receive(ws, topics):
-    await sub_topics(ws, topics)
+subed_topics = []
 
 
-def run_forever(topics=None):
+async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
+    global subed_topics
+    topics = DB.get_all_topics()
+
+    more = set(subed_topics) - set(topics)
+    less = set(topics) - set(subed_topics)
+
+    # check extra topics subscribed
+    if len(more) > 0:
+        await ws.close()
+        subed_topics = []
+        raise CloseException(str(more))
+
+    if less:
+        await sub_topics(ws, list(less))
+        subed_topics = topics
+
+
+class CloseException(Exception):
+    pass
+
+
+def run_forever():
     logging.basicConfig(level=logging.INFO)
     loop = asyncio.new_event_loop()
 
-    # get all topics
     while True:
-        if topics is None:
-            topics = []
-            all_topics = DB.get_all_topics()
-            for ts in all_topics.values():
-                topics += ts
-
         try:
-            run_async_func_in_loop(
-                connect_hub(on_message, partial(before_receive, topics=topics)), loop
-            )
+            run_async_func_in_loop(connect_hub(on_message, after_msg=after_msg), loop)
         except asyncio.TimeoutError as e:
+            print(e)
+            time.sleep(10)
+        except CloseException as e:
             print(e)
             time.sleep(10)
         print('-' * 100)
@@ -116,5 +135,4 @@ def run_in_new_thread():
 
 
 if __name__ == '__main__':
-    topics = ['hello']
-    run_forever(topics)
+    run_forever()

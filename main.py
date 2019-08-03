@@ -51,6 +51,13 @@ async def unsubscribe(message: types.Message):
     await message.reply(f"Topics you subscribed now: {', '.join(new_topics)}")
 
 
+@dp.message_handler(commands=['unsubscribe_all', 'unsub_all'])
+async def unsubscribe_all(message: types.Message):
+    chat_id, user, topics = parse_topics(message)
+    new_topics = DB.clear_chat_topics(chat_id)
+    await message.reply(f"Topics you subscribed now: {', '.join(new_topics)}")
+
+
 @dp.message_handler()
 async def echo(message: types.Message):
     await bot.send_message(message.chat.id, message.text)
