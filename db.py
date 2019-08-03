@@ -1,6 +1,8 @@
 import os
 from jsonkv import JsonKV
 
+sorted_set = lambda x: sorted(set(list(x)))
+
 
 class Event:
     def __init__(self, user, chat):
@@ -71,13 +73,13 @@ class Database:
         map = self.get_key_topics_map()
         for ts in map.values():
             topics += ts
-        return sorted(topics)
+        return sorted_set(topics)
 
     def get_upstream_topics(self):
         return self.get_chat_topics("upstream")
 
     def set_upstream_topics(self, topics):
-        return self.set_chat_topics("upstream", topics)
+        return self.set_chat_topics("upstream", sorted_set(topics))
 
 
 DB = Database()
