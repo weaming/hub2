@@ -4,6 +4,7 @@ Author       : weaming
 Created Time : 2019-08-02 01:49:24
 """
 import os
+import json
 import logging
 import sys
 
@@ -29,7 +30,7 @@ async def send_welcome(message: types.Message):
     )
 
 
-def parse_topics(message):
+def parse_topics(message: types.Message):
     topics = [x.strip() for x in message.get_args().split(',') if x.strip()]
     cmd = message.get_command()
     user = message.from_user
@@ -56,6 +57,15 @@ async def unsubscribe_all(message: types.Message):
     chat_id, user, topics = parse_topics(message)
     new_topics = DB.clear_chat_topics(chat_id)
     await message.reply(f"Topics you subscribed now: {', '.join(new_topics)}")
+
+
+@dp.message_handler(commands=['status'])
+async def status(message: types.Message):
+    chat_id, user, topics = parse_topics(message)
+    if user.username == os.getenv("ADMIN_NAME", 'weaming'):
+        await message.reply(json.dumps(DB.get_user_topics_map(), ensure_ascii=False))
+    else:
+        await message.reply("You do not have permission.")
 
 
 @dp.message_handler()
