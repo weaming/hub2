@@ -64,7 +64,7 @@ class Database:
     def get_key_topics_map(self):
         with self.db as db:
             data = db.data
-            return {u: v['topics'] for u, v in data.items()}
+            return {u: v['topics'] for u, v in data.items() if u != 'upstream'}
 
     def get_all_topics(self):
         topics = []
@@ -72,6 +72,12 @@ class Database:
         for ts in map.values():
             topics += ts
         return sorted(topics)
+
+    def get_upstream_topics(self):
+        return self.get_chat_topics("upstream")
+
+    def set_upstream_topics(self, topics):
+        return self.set_chat_topics("upstream", topics)
 
 
 DB = Database()

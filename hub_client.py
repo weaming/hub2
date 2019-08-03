@@ -97,25 +97,23 @@ def run_async_func_in_loop(future, loop):
     return result
 
 
-subed_topics = []
-
-
 async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
-    global subed_topics
     topics = DB.get_all_topics()
 
-    more = set(subed_topics) - set(topics)
-
     # check extra topics subscribed
-    if len(more) > 0:
+    upstream_topics = DB.get_upstream_topics()
+    more = set(upstream_topics) - set(topics)
+    # when subscribed more than 10 unused topics
+    if len(more) > 10:
         await ws.close()
-        subed_topics = []
+        DB.set_upstream_topics([])
         raise CloseException(str(more))
 
-    less = set(topics) - set(subed_topics)
+    upstream_topics = DB.get_upstream_topics()
+    less = set(topics) - set(upstream_topics)
     if less:
         await sub_topics(ws, list(less))
-        subed_topics = topics
+        DB.set_upstream_topics(topics)
 
 
 class CloseException(Exception):
