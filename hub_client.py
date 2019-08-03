@@ -97,6 +97,15 @@ def run_async_func_in_loop(future, loop):
     return result
 
 
+async def reset_upstream_topics(ws):
+    DB.set_upstream_topics([])
+
+
+async def sub_all(ws):
+    topics = DB.get_all_topics()
+    await sub_topics(ws, topics)
+
+
 async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
     topics = DB.get_all_topics()
 
@@ -109,6 +118,7 @@ async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
         DB.set_upstream_topics([])
         raise CloseException(str(more))
 
+    # sync added topics
     upstream_topics = DB.get_upstream_topics()
     less = set(topics) - set(upstream_topics)
     if less:
@@ -127,13 +137,22 @@ def run_forever():
 
     while True:
         try:
-            run_async_func_in_loop(connect_hub(on_message, after_msg=after_msg), loop)
+            run_async_func_in_loop(
+                connect_hub(
+                    on_message,
+                    before_receive=sub_all,
+                    after_msg=after_msg,
+                    on_close=reset_upstream_topics,
+                ),
+                loop,
+            )
         except asyncio.TimeoutError as e:
             hub_log.warn(e)
             time.sleep(10)
         except CloseException as e:
             hub_log.info(e)
             hub_log.info('restarting...')
+        DB.set_upstream_topics([])
 
 
 def run_in_new_thread():

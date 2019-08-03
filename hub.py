@@ -60,7 +60,9 @@ def http_post_data_to_hub(data, topics):
     return requests.post("https://hub.drink.cafe/http", json=msg)
 
 
-async def connect_hub(on_message, before_receive=None, after_msg=None, timeout=60):
+async def connect_hub(
+    on_message, before_receive=None, after_msg=None, on_close=on_close, timeout=60
+):
     timeout = aiohttp.ClientTimeout(total=timeout)
 
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -81,4 +83,3 @@ async def connect_hub(on_message, before_receive=None, after_msg=None, timeout=6
 
                 if after_msg is not None:
                     await after_msg(ws, msg)
-
