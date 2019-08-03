@@ -93,7 +93,6 @@ async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
     topics = DB.get_all_topics()
 
     more = set(subed_topics) - set(topics)
-    less = set(topics) - set(subed_topics)
 
     # check extra topics subscribed
     if len(more) > 0:
@@ -101,13 +100,15 @@ async def after_msg(ws: ClientWebSocketResponse, msg: aiohttp.WSMessage):
         subed_topics = []
         raise CloseException(str(more))
 
+    less = set(topics) - set(subed_topics)
     if less:
         await sub_topics(ws, list(less))
         subed_topics = topics
 
 
 class CloseException(Exception):
-    pass
+    def __str__(self):
+        return f"<CloseException: {repr(self)}>"
 
 
 def run_forever():
@@ -118,12 +119,11 @@ def run_forever():
         try:
             run_async_func_in_loop(connect_hub(on_message, after_msg=after_msg), loop)
         except asyncio.TimeoutError as e:
-            print(e)
+            hub_log.warn(e)
             time.sleep(10)
         except CloseException as e:
-            print(e)
-            time.sleep(10)
-        print('-' * 100)
+            hub_log.info(e)
+            hub_log.info('restarting...')
 
 
 def run_in_new_thread():
