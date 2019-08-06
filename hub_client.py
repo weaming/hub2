@@ -147,12 +147,15 @@ def run_forever():
                 loop,
             )
         except asyncio.TimeoutError as e:
-            hub_log.warn(e)
+            hub_log.warning(e)
             time.sleep(10)
         except CloseException as e:
             hub_log.info(e)
-            hub_log.info('restarting...')
+        except Exception as e:  # catch all exceptions
+            hub_log.info(e)
+
         DB.set_upstream_topics([])
+        hub_log.info('restarting...')
 
 
 def run_in_new_thread():
