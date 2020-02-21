@@ -3,12 +3,15 @@ import traceback
 import aiohttp
 import logging
 import time
+from io import BytesIO
+import base64
 import asyncio
 
 from aiohttp import ClientWebSocketResponse
 
 from db import DB, Event
 from hub import new_sub_message, hub_log, connect_hub, MESSAGE_TYPE
+from aiogram.types.base import InputFile
 
 
 async def sub_topics(ws: ClientWebSocketResponse, topics):
@@ -62,31 +65,54 @@ async def on_message(ws, message: aiohttp.WSMessage):
             elif innter_type == MESSAGE_TYPE.JSON.name:
                 body = innter_data
                 disable_preview = True
+            elif innter_type == MESSAGE_TYPE.IMAGE.name:
+                body = innter_data
             else:
                 hub_log.warning(f"unprocessed type {innter_type}")
 
             if body:
-                body = f"# {topic}\n\n{body}"
+                body_with_topic = f"# {topic}\n\n{body}"
                 all_topics = DB.get_key_topics_map()
                 for key, topics in all_topics.items():
-
-                    # reply in group or private chat
                     user_id, username, chat_id = Event.parse_key(key)
-                    if user_id != chat_id:
-                        real_body = f"@{username} {body}"
-                        disable_notification = True
-                    else:
-                        real_body = body
 
                     if topic in topics:
                         try:
-                            await bot.send_message(
-                                chat_id,
-                                real_body,
-                                parse_mode=parse_mode,
-                                disable_web_page_preview=disable_preview,
-                                disable_notification=disable_notification,
-                            )
+                            if innter_type == MESSAGE_TYPE.IMAGE.name:
+                                if user_id != chat_id:
+                                    caption = f"@{username} # {topic}"
+                                else:
+                                    caption = f'# {topic}'
+
+                                # string in hub message maybe a base64 encoded bytes
+                                # or http url of a image
+                                if body.startswith('http'):
+                                    photo = body
+                                else:
+                                    photo = BytesIO(base64.b64decode(body))
+
+                                await bot.send_photo(
+                                    chat_id,
+                                    photo,
+                                    caption=caption,
+                                    parse_mode=parse_mode,
+                                    disable_notification=disable_notification,
+                                )
+                            else:
+                                # reply in group or private chat
+                                if user_id != chat_id:
+                                    real_body = f"@{username} {body_with_topic}"
+                                    disable_notification = True
+                                else:
+                                    real_body = body_with_topic
+
+                                await bot.send_message(
+                                    chat_id,
+                                    real_body,
+                                    parse_mode=parse_mode,
+                                    disable_web_page_preview=disable_preview,
+                                    disable_notification=disable_notification,
+                                )
                         except Exception as e:
                             traceback.print_exc()
 

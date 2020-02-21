@@ -18,7 +18,7 @@ token = os.getenv('API_TOKEN')
 if not token:
     print('missing API_TOKEN')
     sys.exit(1)
-bot = Bot(token=token)
+bot = Bot(token=token, proxy=os.getenv('https_proxy'))
 dp = Dispatcher(bot)
 hub2_log = logging.getLogger("hub2")
 
@@ -45,7 +45,7 @@ def parse_topics(message: types.Message):
         topics,
     )
     event = Event(user, chat)
-    hub2_log.info(event)
+    # hub2_log.debug(event)
     return event, topics
 
 
@@ -81,7 +81,10 @@ async def status(message: types.Message):
 
 @dp.message_handler()
 async def echo(message: types.Message):
-    await bot.send_message(message.chat.id, message.text)
+    if message.text == '/ping':
+        await bot.send_message(message.chat.id, f'chat_id: {message.chat.id}')
+    else:
+        await bot.send_message(message.chat.id, message.text)
 
 
 if __name__ == '__main__':
