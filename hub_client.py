@@ -19,6 +19,10 @@ async def sub_topics(ws: ClientWebSocketResponse, topics):
     hub_log.info(f"subscribed {topics}")
 
 
+def is_media(type):
+    return type in [MESSAGE_TYPE.PHOTO.name, MESSAGE_TYPE.VIDEO.name]
+
+
 async def on_message(ws, message: aiohttp.WSMessage):
     """
     {
@@ -49,7 +53,8 @@ async def on_message(ws, message: aiohttp.WSMessage):
             innter_type = msg['message']['type']
             innter_data = msg['message']['data']
             extended_data = msg['message']['extended_data'] or []
-            captions = msg['message']['captions'] or []
+            caption = msg['message']['caption']
+            group = False
 
             body = ''
             parse_mode = None
@@ -69,12 +74,15 @@ async def on_message(ws, message: aiohttp.WSMessage):
             elif innter_type == MESSAGE_TYPE.JSON.name:
                 body = innter_data
                 disable_preview = True
-            elif innter_type == MESSAGE_TYPE.IMAGE.name:
-                body = [innter_data] + extended_data
-                # ensure len(captions) == len(body)
-                missing = len(body) - len(captions)
-                if missing > 0:
-                    captions += [''] * missing
+            elif is_media(innter_type) or extended_data:
+                body = [
+                    {'type': innter_type, 'data': innter_data, 'caption': caption}
+                ] + extended_data  # type: list
+                print(body)
+                # check: all types must be photo or video
+                if not all(is_media(x['type']) for x in body):
+                    hub_log.warning(f"not all types are media")
+                    return
             else:
                 hub_log.warning(f"unprocessed type {innter_type}")
 
@@ -86,41 +94,50 @@ async def on_message(ws, message: aiohttp.WSMessage):
 
                     if topic in topics:
                         try:
-                            if innter_type == MESSAGE_TYPE.IMAGE.name:
-                                if user_id != chat_id:
-                                    caption_default = f"@{username} # {topic}"
-                                else:
-                                    caption_default = f'# {topic}'
-
+                            if is_media(innter_type) or extended_data:
                                 # string in hub message maybe a base64 encoded bytes
                                 # or http url of a image
-                                photos = [
-                                    x
-                                    if x.startswith('http')
-                                    else BytesIO(base64.b64decode(x))
+                                media_group = [
+                                    {
+                                        'type': x['type'].lower(),
+                                        'media': x['data']
+                                        if x['data'].startswith('http')
+                                        else BytesIO(base64.b64decode(x['data'])),
+                                        'caption': x['caption'],
+                                    }
                                     for x in body
                                 ]
-                                if len(photos) > 1:
+                                if len(media_group) > 1:
                                     await bot.send_media_group(
                                         chat_id,
-                                        [
-                                            {
-                                                'type': 'photo',
-                                                'media': x,
-                                                'caption': captions[i],
-                                            }
-                                            for i, x in enumerate(photos)
-                                        ],
+                                        media_group,
                                         disable_notification=disable_notification,
                                     )
                                 else:
-                                    await bot.send_photo(
-                                        chat_id,
-                                        photos[0],
-                                        caption=captions[0] or caption_default,
-                                        parse_mode=parse_mode,
-                                        disable_notification=disable_notification,
-                                    )
+                                    if user_id != chat_id:
+                                        caption_default = f"@{username} # {topic}"
+                                    else:
+                                        caption_default = f'# {topic}'
+                                    if caption:
+                                        caption_default += f' {caption}'
+
+                                    x = media_group[0]
+                                    if x['type'] == 'photo':
+                                        await bot.send_photo(
+                                            chat_id,
+                                            x['media'],
+                                            caption=caption_default,
+                                            parse_mode=parse_mode,
+                                            disable_notification=disable_notification,
+                                        )
+                                    else:
+                                        await bot.send_video(
+                                            chat_id,
+                                            x['media'],
+                                            caption=caption_default,
+                                            parse_mode=parse_mode,
+                                            disable_notification=disable_notification,
+                                        )
                             else:
                                 # reply in group or private chat
                                 if user_id != chat_id:

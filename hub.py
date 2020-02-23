@@ -1,6 +1,8 @@
 import aiohttp
 import logging
 import json
+from copy import deepcopy
+from typing import List, Dict
 from enum import Enum
 from base64 import b64encode
 
@@ -19,7 +21,8 @@ class MESSAGE_TYPE(Enum):
     MARKDOWN = "MARKDOWN"
     JSON = "JSON"
     HTML = "HTML"
-    IMAGE = "IMAGE"
+    PHOTO = "PHOTO"
+    VIDEO = "VIDEO"
 
 
 async def on_error(ws, error):
@@ -37,17 +40,32 @@ async def on_unknown(ws, msg):
 def data_to_str(data, type):
     if type in [MESSAGE_TYPE.JSON.name]:
         return json.dumps(data, ensure_ascii=False)
-    if type in [MESSAGE_TYPE.IMAGE.name]:
+    if type in [MESSAGE_TYPE.PHOTO.name, MESSAGE_TYPE.VIDEO.name]:
         if not isinstance(data, str):
             return b64encode(data).encode('utf8')
     return str(data)
 
 
-def new_pub_message(data, type=MESSAGE_TYPE.PLAIN.name, topics=('global',)):
+def new_pub_message(
+    data,
+    *,
+    type=MESSAGE_TYPE.PLAIN.name,
+    caption=None,
+    topics=('global',),
+    extended_data: List[Dict] = [],
+):
+    extended_data = deepcopy(extended_data)
+    for x in extended_data:
+        x['data'] = data_to_str(x['data'], x['type'])
     return {
         'action': "PUB",
         'topics': topics,
-        'message': {'type': type, 'data': data_to_str(data, type)},
+        'message': {
+            'type': type,
+            'data': data_to_str(data, type),
+            'caption': caption,
+            'extended_data': extended_data,
+        },
     }
 
 
