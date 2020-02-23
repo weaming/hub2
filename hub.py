@@ -66,7 +66,7 @@ async def connect_hub(
     timeout = aiohttp.ClientTimeout(total=timeout)
 
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.ws_connect(hub_url) as ws:
+        async with session.ws_connect(hub_url, timeout=60 * 5, heartbeat=20) as ws:
             if before_receive:
                 await before_receive(ws)
             async for msg in ws:  # type: aiohttp.WSMessage
