@@ -24,6 +24,8 @@ async def on_message(ws, message: aiohttp.WSMessage):
     {
       "message": {
         "data": "hello",
+        "extended_data": [],
+        "captions": [],
         "type": "PLAIN"
       },
       "topic": "global",
@@ -46,6 +48,8 @@ async def on_message(ws, message: aiohttp.WSMessage):
             # render message
             innter_type = msg['message']['type']
             innter_data = msg['message']['data']
+            extended_data = msg['message']['extended_data'] or []
+            captions = msg['message']['captions'] or []
 
             body = ''
             parse_mode = None
@@ -66,7 +70,11 @@ async def on_message(ws, message: aiohttp.WSMessage):
                 body = innter_data
                 disable_preview = True
             elif innter_type == MESSAGE_TYPE.IMAGE.name:
-                body = innter_data
+                body = [innter_data] + extended_data
+                # ensure len(captions) == len(body)
+                missing = len(body) - len(captions)
+                if missing > 0:
+                    captions += [''] * missing
             else:
                 hub_log.warning(f"unprocessed type {innter_type}")
 
@@ -80,24 +88,39 @@ async def on_message(ws, message: aiohttp.WSMessage):
                         try:
                             if innter_type == MESSAGE_TYPE.IMAGE.name:
                                 if user_id != chat_id:
-                                    caption = f"@{username} # {topic}"
+                                    caption_default = f"@{username} # {topic}"
                                 else:
-                                    caption = f'# {topic}'
+                                    caption_default = f'# {topic}'
 
                                 # string in hub message maybe a base64 encoded bytes
                                 # or http url of a image
-                                if body.startswith('http'):
-                                    photo = body
+                                photos = [
+                                    x
+                                    if x.startswith('http')
+                                    else BytesIO(base64.b64decode(x))
+                                    for x in body
+                                ]
+                                if len(photos) > 1:
+                                    await bot.send_media_group(
+                                        chat_id,
+                                        [
+                                            {
+                                                'type': 'photo',
+                                                'media': x,
+                                                'caption': captions[i],
+                                            }
+                                            for i, x in enumerate(photos)
+                                        ],
+                                        disable_notification=disable_notification,
+                                    )
                                 else:
-                                    photo = BytesIO(base64.b64decode(body))
-
-                                await bot.send_photo(
-                                    chat_id,
-                                    photo,
-                                    caption=caption,
-                                    parse_mode=parse_mode,
-                                    disable_notification=disable_notification,
-                                )
+                                    await bot.send_photo(
+                                        chat_id,
+                                        photos[0],
+                                        caption=captions[0] or caption_default,
+                                        parse_mode=parse_mode,
+                                        disable_notification=disable_notification,
+                                    )
                             else:
                                 # reply in group or private chat
                                 if user_id != chat_id:
