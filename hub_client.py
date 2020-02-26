@@ -141,7 +141,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
                             else:
                                 # reply in group or private chat
                                 if user_id != chat_id:
-                                    real_body = f"@{username} {body_with_topic}"
+                                    real_body = f"by {username} {body_with_topic}"
                                     disable_notification = True
                                 else:
                                     real_body = body_with_topic
