@@ -42,6 +42,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
     msg = message.json()
 
     type = msg['type']
+    by = 'by '
     if type == 'MESSAGE':
         topic = msg['topic']
         if topic:
@@ -115,7 +116,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
                                     )
                                 else:
                                     if user_id != chat_id:
-                                        caption_default = f"@{username} # {topic}"
+                                        caption_default = f"{by}{username} # {topic}"
                                     else:
                                         caption_default = f'# {topic}'
                                     if caption:
@@ -141,7 +142,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
                             else:
                                 # reply in group or private chat
                                 if user_id != chat_id:
-                                    real_body = f"by {username} {body_with_topic}"
+                                    real_body = f"{by}{username} {body_with_topic}"
                                     disable_notification = True
                                 else:
                                     real_body = body_with_topic
