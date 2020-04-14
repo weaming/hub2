@@ -42,7 +42,6 @@ async def on_message(ws, message: aiohttp.WSMessage):
     msg = message.json()
 
     type = msg['type']
-    by = 'by '
     if type == 'MESSAGE':
         topic = msg['topic']
         if topic:
@@ -87,7 +86,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
                 hub_log.warning(f"unprocessed type {innter_type}")
 
             if body:
-                body_with_topic = f"# {topic}\n\n{body}"
+                body_with_topic = f"{body.rstrip()}\n\n# {topic}"
                 all_topics = DB.get_key_topics_map()
                 for key, topics in all_topics.items():
                     user_id, username, chat_id = Event.parse_key(key)
@@ -115,11 +114,13 @@ async def on_message(ws, message: aiohttp.WSMessage):
                                     )
                                 else:
                                     if user_id != chat_id:
-                                        caption_default = f"{by}{username} # {topic}"
+                                        caption_default = f"# {topic} by {username}"
                                     else:
                                         caption_default = f'# {topic}'
                                     if caption:
-                                        caption_default += f' {caption}'
+                                        caption_default = (
+                                            f'{caption.rstrip()}\n\n{caption_default}'
+                                        )
 
                                     x = media_group[0]
                                     if x['type'] == 'photo':
@@ -141,7 +142,9 @@ async def on_message(ws, message: aiohttp.WSMessage):
                             else:
                                 # reply in group or private chat
                                 if user_id != chat_id:
-                                    real_body = f"{by}{username} {body_with_topic}"
+                                    real_body = (
+                                        f"{body_with_topic} by {username}"
+                                    )
                                     disable_notification = True
                                 else:
                                     real_body = body_with_topic
