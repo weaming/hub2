@@ -55,11 +55,12 @@ async def on_message(ws, message: aiohttp.WSMessage):
             innter_data = msg['message']['data']
             extended_data = msg['message']['extended_data'] or []
             caption = msg['message']['caption']
+            preview = msg['message']['preview']
             group = False
 
             body = ''
             parse_mode = None
-            disable_preview = False
+            disable_preview = not preview
             disable_notification = False
 
             # parse message type
@@ -71,10 +72,8 @@ async def on_message(ws, message: aiohttp.WSMessage):
             elif innter_type == MESSAGE_TYPE.HTML.name:
                 body = innter_data
                 parse_mode = "HTML"
-                disable_preview = True
             elif innter_type == MESSAGE_TYPE.JSON.name:
                 body = innter_data
-                disable_preview = True
             elif is_media(innter_type) or extended_data:
                 body = [
                     {'type': innter_type, 'data': innter_data, 'caption': caption}
