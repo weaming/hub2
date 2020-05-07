@@ -86,7 +86,6 @@ async def on_message(ws, message: aiohttp.WSMessage):
                 hub_log.warning(f"unprocessed type {innter_type}")
 
             if body:
-                body_with_topic = f"{body.rstrip()}\n\n# {topic}"
                 all_topics = DB.get_key_topics_map()
                 for key, topics in all_topics.items():
                     user_id, username, chat_id = Event.parse_key(key)
@@ -140,6 +139,7 @@ async def on_message(ws, message: aiohttp.WSMessage):
                                             disable_notification=disable_notification,
                                         )
                             else:
+                                body_with_topic = f"{body.rstrip()}\n\n# {topic}"
                                 # reply in group or private chat
                                 if user_id != chat_id:
                                     real_body = (
