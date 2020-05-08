@@ -1,5 +1,7 @@
 # Hub2
 
+> Replaced by [hub2-go](https://github.com/weaming/hub2-go)
+
 Subscribe topics on https://hub.drink.cafe
 
 Bot: [hub2](https://t.me/hub2_bot)
